@@ -46,10 +46,6 @@ public class CollectivityService {
 
     // ── PATCH /collectivities/{id} ────────────────────────────────────────────
 
-    /**
-     * Fonctionnalité J — Assignation du numéro et du nom unique par la fédération.
-     * Retourne désormais un CollectivityDto unifié (v0.0.3).
-     */
     public CollectivityDto updateCollectivity(String id, UpdateCollectivityDto request) {
         CollectivityEntity entity = collectivityRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Collectivity not found with id: " + id));
@@ -182,9 +178,6 @@ public class CollectivityService {
 
     // ── Mappage entité → DTO ──────────────────────────────────────────────────
 
-    /**
-     * Mapping complet utilisé lors de la création (members et structure résolus).
-     */
     private CollectivityDto toDto(CollectivityEntity entity,
                                   List<MemberEntity> members,
                                   MemberEntity president,
@@ -209,9 +202,6 @@ public class CollectivityService {
         return dto;
     }
 
-    /**
-     * Mapping léger utilisé après PATCH (structure/members rechargés depuis le store).
-     */
     private CollectivityDto toDto(CollectivityEntity entity) {
         CollectivityDto dto = buildBaseDto(entity);
 
@@ -240,9 +230,6 @@ public class CollectivityService {
         return dto;
     }
 
-    /**
-     * Champs scalaires communs aux deux variantes de mapping.
-     */
     private CollectivityDto buildBaseDto(CollectivityEntity entity) {
         CollectivityDto dto = new CollectivityDto();
         dto.setId(entity.getId());

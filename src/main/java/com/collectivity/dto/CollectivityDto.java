@@ -6,22 +6,16 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DTO de réponse unifié pour le schéma Collectivity (v0.0.3).
- * Couvre les deux endpoints : POST /collectivities et PATCH /collectivities/{id}.
- * - number et name sont null jusqu'à assignation via PATCH.
- * - agriculturalSpecialty et creationDate sont renseignés dès la création.
- */
 public class CollectivityDto {
 
     private String id;
-    private Integer number;             // null jusqu'à assignation fédération
-    private String name;                // null jusqu'à assignation fédération
+    private Integer number;
+    private String name;
     private String location;
-    private String agriculturalSpecialty;  // v0.0.3
+    private String agriculturalSpecialty;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate creationDate;     // v0.0.3 — positionné automatiquement à la création
+    private LocalDate creationDate;
 
     private CollectivityStructureDto structure;
     private List<MemberDto> members = new ArrayList<>();

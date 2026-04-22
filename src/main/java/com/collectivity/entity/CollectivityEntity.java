@@ -13,7 +13,7 @@ public class CollectivityEntity {
     private String agriculturalSpecialty;
     private List<String> memberIds = new ArrayList<>();
     private String presidentId;
-    private String deputyPresidentId;  // renommé depuis vicePresidentId (v0.0.3)
+    private String deputyPresidentId;
     private String treasurerId;
     private String secretaryId;
     private LocalDate creationDate;

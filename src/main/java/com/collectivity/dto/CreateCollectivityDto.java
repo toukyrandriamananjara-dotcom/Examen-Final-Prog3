@@ -6,7 +6,7 @@ import java.util.List;
 public class CreateCollectivityDto {
 
     private String location;
-    private String agriculturalSpecialty; // NEW
+    private String agriculturalSpecialty;
     private List<String> members = new ArrayList<>();
     private Boolean federationApproval;
     private CreateCollectivityStructureDto structure;

@@ -1,11 +1,9 @@
 package com.collectivity.dto;
 
-/**
- * DTO for the relation between a member and their referee.
- */
+
 public class MemberRelationDto {
     private String refereeId;
-    private String relationType; // "FAMILY", "FRIEND", "COLLEAGUE", etc.
+    private String relationType;
 
     public MemberRelationDto() {}
 
