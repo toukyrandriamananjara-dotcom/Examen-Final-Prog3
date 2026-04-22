@@ -1,13 +1,13 @@
 package com.collectivity.dto;
 
 /**
- * Response DTO for CollectivityStructure schema.
- * Each position holds a full MemberDto.
+ * Response DTO pour le schéma CollectivityStructure.
+ * Chaque position expose un MemberDto complet.
  */
 public class CollectivityStructureDto {
 
     private MemberDto president;
-    private MemberDto vicePresident;
+    private MemberDto deputyPresident;  // renommé depuis vicePresident (v0.0.3)
     private MemberDto treasurer;
     private MemberDto secretary;
 
@@ -16,8 +16,8 @@ public class CollectivityStructureDto {
     public MemberDto getPresident() { return president; }
     public void setPresident(MemberDto president) { this.president = president; }
 
-    public MemberDto getVicePresident() { return vicePresident; }
-    public void setVicePresident(MemberDto vicePresident) { this.vicePresident = vicePresident; }
+    public MemberDto getDeputyPresident() { return deputyPresident; }
+    public void setDeputyPresident(MemberDto deputyPresident) { this.deputyPresident = deputyPresident; }
 
     public MemberDto getTreasurer() { return treasurer; }
     public void setTreasurer(MemberDto treasurer) { this.treasurer = treasurer; }

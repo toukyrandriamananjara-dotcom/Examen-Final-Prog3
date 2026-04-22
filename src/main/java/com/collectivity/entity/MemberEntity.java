@@ -3,6 +3,7 @@ package com.collectivity.entity;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MemberEntity {
 
@@ -18,7 +19,9 @@ public class MemberEntity {
     private MemberOccupation occupation;
     private String collectivityId;
     private List<String> refereeIds = new ArrayList<>();
+    private Map<String, String> refereeRelations; // NEW: refereeId -> relationType
     private LocalDate membershipDate;
+    private Long annualContributionAmount; // NEW: amount due for annual contribution
 
     public MemberEntity() {}
 
@@ -58,6 +61,12 @@ public class MemberEntity {
     public List<String> getRefereeIds() { return refereeIds; }
     public void setRefereeIds(List<String> refereeIds) { this.refereeIds = refereeIds; }
 
+    public Map<String, String> getRefereeRelations() { return refereeRelations; }
+    public void setRefereeRelations(Map<String, String> refereeRelations) { this.refereeRelations = refereeRelations; }
+
     public LocalDate getMembershipDate() { return membershipDate; }
     public void setMembershipDate(LocalDate membershipDate) { this.membershipDate = membershipDate; }
+
+    public Long getAnnualContributionAmount() { return annualContributionAmount; }
+    public void setAnnualContributionAmount(Long annualContributionAmount) { this.annualContributionAmount = annualContributionAmount; }
 }

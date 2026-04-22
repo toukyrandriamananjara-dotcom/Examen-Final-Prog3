@@ -18,13 +18,9 @@ import java.util.UUID;
 @Service
 public class CollectivityService {
 
-    /**
-     * A collectivity must have at least 10 members,
-     * of which at least 5 must have been in the federation for 6+ months.
-     */
     private static final int MIN_MEMBERS = 10;
     private static final int MIN_SENIOR_MEMBERS = 5;
-    private static final long SENIOR_SENIORITY_DAYS = 180; // ~6 months
+    private static final long SENIOR_SENIORITY_DAYS = 180;
 
     private final CollectivityRepository collectivityRepository;
     private final MemberRepository memberRepository;
@@ -38,13 +34,8 @@ public class CollectivityService {
         this.memberService = memberService;
     }
 
-    /**
-     * Creates a batch of collectivities after validating business rules.
-     *
-     * @throws NotFoundException    if any referenced member is not found (HTTP 404)
-     * @throws BadRequestException  if federation approval is missing, structure is absent,
-     *                              or member count / seniority requirements are not met (HTTP 400)
-     */
+    // ── POST /collectivities ──────────────────────────────────────────────────
+
     public List<CollectivityDto> createCollectivities(List<CreateCollectivityDto> requests) {
         List<CollectivityDto> created = new ArrayList<>();
         for (CreateCollectivityDto request : requests) {
@@ -53,32 +44,75 @@ public class CollectivityService {
         return created;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── PATCH /collectivities/{id} ────────────────────────────────────────────
+
+    /**
+     * Fonctionnalité J — Assignation du numéro et du nom unique par la fédération.
+     * Retourne désormais un CollectivityDto unifié (v0.0.3).
+     */
+    public CollectivityDto updateCollectivity(String id, UpdateCollectivityDto request) {
+        CollectivityEntity entity = collectivityRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Collectivity not found with id: " + id));
+
+        // Numéro déjà assigné : interdit de le modifier
+        if (entity.getNumber() != null && request.getNumber() != null
+                && !entity.getNumber().equals(request.getNumber())) {
+            throw new BadRequestException(
+                    "Collectivity number cannot be changed once assigned. Current number: " + entity.getNumber());
+        }
+
+        // Nom déjà assigné : interdit de le modifier
+        if (entity.getName() != null && request.getName() != null
+                && !entity.getName().equals(request.getName())) {
+            throw new BadRequestException(
+                    "Collectivity name cannot be changed once assigned. Current name: " + entity.getName());
+        }
+
+        // Unicité du numéro
+        if (request.getNumber() != null && !request.getNumber().equals(entity.getNumber())) {
+            boolean numberExists = collectivityRepository.findAll().stream()
+                    .anyMatch(c -> request.getNumber().equals(c.getNumber()));
+            if (numberExists) {
+                throw new BadRequestException("Collectivity number already exists: " + request.getNumber());
+            }
+            entity.setNumber(request.getNumber());
+        }
+
+        // Unicité du nom (insensible à la casse)
+        if (request.getName() != null && !request.getName().equals(entity.getName())) {
+            boolean nameExists = collectivityRepository.findAll().stream()
+                    .anyMatch(c -> request.getName().equalsIgnoreCase(c.getName()));
+            if (nameExists) {
+                throw new BadRequestException("Collectivity name already exists: " + request.getName());
+            }
+            entity.setName(request.getName());
+        }
+
+        collectivityRepository.save(entity);
+        return toDto(entity);
+    }
+
+    // ── Logique de création ───────────────────────────────────────────────────
 
     private CollectivityDto createSingleCollectivity(CreateCollectivityDto request) {
-
-        // 1. Federation approval required (400)
         if (!Boolean.TRUE.equals(request.getFederationApproval())) {
             throw new BadRequestException("Federation approval is required to open a new collectivity.");
         }
 
-        // 2. Structure required (400)
         if (request.getStructure() == null) {
-            throw new BadRequestException("A governance structure (president, vice-president, treasurer, secretary) is required.");
+            throw new BadRequestException(
+                    "A governance structure (president, deputy president, treasurer, secretary) is required.");
         }
         validateStructureNotEmpty(request.getStructure());
 
-        // 3. Resolve all members (404 if any ID is unknown)
         List<MemberEntity> memberEntities = resolveMembers(request.getMembers());
 
-        // 4. Minimum 10 members (400)
         if (memberEntities.size() < MIN_MEMBERS) {
             throw new BadRequestException(
                     "A collectivity must have at least " + MIN_MEMBERS + " members "
                             + "(provided: " + memberEntities.size() + ").");
         }
 
-        // 5. At least 5 members with 6+ months of seniority in the federation (400)
         long seniorCount = memberEntities.stream()
                 .filter(m -> m.getMembershipDate() != null
                         && ChronoUnit.DAYS.between(m.getMembershipDate(), LocalDate.now()) >= SENIOR_SENIORITY_DAYS)
@@ -89,21 +123,20 @@ public class CollectivityService {
                             + "(current: " + seniorCount + ").");
         }
 
-        // 6. Resolve structure members (404 if any ID is unknown)
         CreateCollectivityStructureDto structureRequest = request.getStructure();
-        MemberEntity president    = resolveMember(structureRequest.getPresident(),    "President");
-        MemberEntity vicePresident = resolveMember(structureRequest.getVicePresident(), "Vice-president");
-        MemberEntity treasurer    = resolveMember(structureRequest.getTreasurer(),    "Treasurer");
-        MemberEntity secretary    = resolveMember(structureRequest.getSecretary(),    "Secretary");
+        MemberEntity president      = resolveMember(structureRequest.getPresident(),       "President");
+        MemberEntity deputyPresident = resolveMember(structureRequest.getDeputyPresident(), "Deputy president");
+        MemberEntity treasurer      = resolveMember(structureRequest.getTreasurer(),       "Treasurer");
+        MemberEntity secretary      = resolveMember(structureRequest.getSecretary(),       "Secretary");
 
-        // 7. Build and persist the entity
         CollectivityEntity entity = new CollectivityEntity();
         entity.setId(UUID.randomUUID().toString());
         entity.setLocation(request.getLocation());
+        entity.setAgriculturalSpecialty(request.getAgriculturalSpecialty());
         entity.setFederationApproval(true);
         entity.setCreationDate(LocalDate.now());
         entity.setPresidentId(president.getId());
-        entity.setVicePresidentId(vicePresident.getId());
+        entity.setDeputyPresidentId(deputyPresident.getId());
         entity.setTreasurerId(treasurer.getId());
         entity.setSecretaryId(secretary.getId());
 
@@ -115,19 +148,15 @@ public class CollectivityService {
 
         collectivityRepository.save(entity);
 
-        return toDto(entity, memberEntities, president, vicePresident, treasurer, secretary);
+        return toDto(entity, memberEntities, president, deputyPresident, treasurer, secretary);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Validation helpers
-    // ─────────────────────────────────────────────────────────────────────────
 
     private void validateStructureNotEmpty(CreateCollectivityStructureDto structure) {
         if (structure.getPresident() == null || structure.getPresident().isBlank()) {
             throw new BadRequestException("Structure is missing a president.");
         }
-        if (structure.getVicePresident() == null || structure.getVicePresident().isBlank()) {
-            throw new BadRequestException("Structure is missing a vice-president.");
+        if (structure.getDeputyPresident() == null || structure.getDeputyPresident().isBlank()) {
+            throw new BadRequestException("Structure is missing a deputy president.");
         }
         if (structure.getTreasurer() == null || structure.getTreasurer().isBlank()) {
             throw new BadRequestException("Structure is missing a treasurer.");
@@ -151,23 +180,22 @@ public class CollectivityService {
                 .orElseThrow(() -> new NotFoundException(role + " not found with id: " + id));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Mapping helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Mappage entité → DTO ──────────────────────────────────────────────────
 
+    /**
+     * Mapping complet utilisé lors de la création (members et structure résolus).
+     */
     private CollectivityDto toDto(CollectivityEntity entity,
                                   List<MemberEntity> members,
                                   MemberEntity president,
-                                  MemberEntity vicePresident,
+                                  MemberEntity deputyPresident,
                                   MemberEntity treasurer,
                                   MemberEntity secretary) {
-        CollectivityDto dto = new CollectivityDto();
-        dto.setId(entity.getId());
-        dto.setLocation(entity.getLocation());
+        CollectivityDto dto = buildBaseDto(entity);
 
         CollectivityStructureDto structureDto = new CollectivityStructureDto();
         structureDto.setPresident(memberService.toDto(president));
-        structureDto.setVicePresident(memberService.toDto(vicePresident));
+        structureDto.setDeputyPresident(memberService.toDto(deputyPresident));
         structureDto.setTreasurer(memberService.toDto(treasurer));
         structureDto.setSecretary(memberService.toDto(secretary));
         dto.setStructure(structureDto);
@@ -178,6 +206,51 @@ public class CollectivityService {
         }
         dto.setMembers(memberDtos);
 
+        return dto;
+    }
+
+    /**
+     * Mapping léger utilisé après PATCH (structure/members rechargés depuis le store).
+     */
+    private CollectivityDto toDto(CollectivityEntity entity) {
+        CollectivityDto dto = buildBaseDto(entity);
+
+        // Résolution de la structure depuis le store
+        if (entity.getPresidentId() != null) {
+            CollectivityStructureDto structureDto = new CollectivityStructureDto();
+            memberRepository.findById(entity.getPresidentId())
+                    .ifPresent(m -> structureDto.setPresident(memberService.toDto(m)));
+            memberRepository.findById(entity.getDeputyPresidentId())
+                    .ifPresent(m -> structureDto.setDeputyPresident(memberService.toDto(m)));
+            memberRepository.findById(entity.getTreasurerId())
+                    .ifPresent(m -> structureDto.setTreasurer(memberService.toDto(m)));
+            memberRepository.findById(entity.getSecretaryId())
+                    .ifPresent(m -> structureDto.setSecretary(memberService.toDto(m)));
+            dto.setStructure(structureDto);
+        }
+
+        // Résolution des membres depuis le store
+        List<MemberDto> memberDtos = new ArrayList<>();
+        for (String memberId : entity.getMemberIds()) {
+            memberRepository.findById(memberId)
+                    .ifPresent(m -> memberDtos.add(memberService.toDto(m)));
+        }
+        dto.setMembers(memberDtos);
+
+        return dto;
+    }
+
+    /**
+     * Champs scalaires communs aux deux variantes de mapping.
+     */
+    private CollectivityDto buildBaseDto(CollectivityEntity entity) {
+        CollectivityDto dto = new CollectivityDto();
+        dto.setId(entity.getId());
+        dto.setNumber(entity.getNumber() != null ? Integer.valueOf(entity.getNumber()) : null);
+        dto.setName(entity.getName());
+        dto.setLocation(entity.getLocation());
+        dto.setAgriculturalSpecialty(entity.getAgriculturalSpecialty());
+        dto.setCreationDate(entity.getCreationDate());
         return dto;
     }
 }

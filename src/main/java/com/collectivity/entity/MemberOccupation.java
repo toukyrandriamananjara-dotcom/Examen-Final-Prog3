@@ -2,9 +2,9 @@ package com.collectivity.entity;
 
 public enum MemberOccupation {
     JUNIOR,
-    SENIOR,
+    CONFIRMED,        // renommé depuis SENIOR (v0.0.3)
     SECRETARY,
     TREASURER,
-    VICE_PRESIDENT,
+    DEPUTY_PRESIDENT, // renommé depuis VICE_PRESIDENT (v0.0.3)
     PRESIDENT
 }

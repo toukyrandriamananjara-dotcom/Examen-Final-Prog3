@@ -3,12 +3,10 @@ package com.collectivity.dto;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Request DTO for POST /collectivities — mirrors the OpenAPI CreateCollectivity schema.
- */
 public class CreateCollectivityDto {
 
     private String location;
+    private String agriculturalSpecialty; // NEW
     private List<String> members = new ArrayList<>();
     private Boolean federationApproval;
     private CreateCollectivityStructureDto structure;
@@ -17,6 +15,9 @@ public class CreateCollectivityDto {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public String getAgriculturalSpecialty() { return agriculturalSpecialty; }
+    public void setAgriculturalSpecialty(String agriculturalSpecialty) { this.agriculturalSpecialty = agriculturalSpecialty; }
 
     public List<String> getMembers() { return members; }
     public void setMembers(List<String> members) { this.members = members; }

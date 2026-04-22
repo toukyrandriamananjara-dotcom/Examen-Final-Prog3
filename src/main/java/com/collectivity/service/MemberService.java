@@ -1,7 +1,9 @@
 package com.collectivity.service;
 
 import com.collectivity.dto.CreateMemberDto;
+import com.collectivity.dto.MemberRelationDto;
 import com.collectivity.dto.MemberDto;
+import com.collectivity.entity.CollectivityEntity;
 import com.collectivity.entity.MemberEntity;
 import com.collectivity.entity.MemberOccupation;
 import com.collectivity.exception.BadRequestException;
@@ -11,18 +13,15 @@ import com.collectivity.repository.MemberRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 @Service
 public class MemberService {
 
-    /**
-     * A referee must have been a member for at least 90 days
-     * and must not be a junior member.
-     */
     private static final long REFEREE_MIN_SENIORITY_DAYS = 90;
+    private static final int MIN_REFEREES = 2;
+    private static final long REGISTRATION_FEE = 50_000L; // 50 000 MGA
 
     private final MemberRepository memberRepository;
     private final CollectivityRepository collectivityRepository;
@@ -33,12 +32,8 @@ public class MemberService {
         this.collectivityRepository = collectivityRepository;
     }
 
-    /**
-     * Creates a batch of members after validating business rules.
-     *
-     * @throws NotFoundException    if collectivity or any referee is not found (HTTP 404)
-     * @throws BadRequestException  if payment flags are false or referees are invalid (HTTP 400)
-     */
+    // ── POST /members ─────────────────────────────────────────────────────────
+
     public List<MemberDto> createMembers(List<CreateMemberDto> requests) {
         List<MemberDto> created = new ArrayList<>();
         for (CreateMemberDto request : requests) {
@@ -47,69 +42,124 @@ public class MemberService {
         return created;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-
     private MemberDto createSingleMember(CreateMemberDto request) {
-
-        // 1. Validate collectivity exists (404)
+        // 1. Collectivité existante
+        CollectivityEntity collectivity = null;
         if (request.getCollectivityIdentifier() != null) {
-            collectivityRepository.findById(request.getCollectivityIdentifier())
+            collectivity = collectivityRepository.findById(request.getCollectivityIdentifier())
                     .orElseThrow(() -> new NotFoundException(
                             "Collectivity not found: " + request.getCollectivityIdentifier()));
         }
 
-        // 2. Validate referees exist and meet criteria (404 then 400)
-        List<MemberEntity> refereeEntities = resolveReferees(request.getReferees());
-
-        // 3. Validate payment flags (400)
-        if (Boolean.FALSE.equals(request.getRegistrationFeePaid())) {
-            throw new BadRequestException("Registration fee has not been paid.");
+        // 2. Au moins 2 parrains requis
+        if (request.getReferees() == null || request.getReferees().size() < MIN_REFEREES) {
+            throw new BadRequestException(
+                    "At least " + MIN_REFEREES + " referees are required for admission.");
         }
-        if (Boolean.FALSE.equals(request.getMembershipDuesPaid())) {
+
+        // 3. Validation des parrains (occupation, ancienneté, règle collectivité)
+        List<MemberEntity> refereeEntities =
+                validateRefereesWithCollectivityRule(request.getReferees(), collectivity);
+
+        // 4. Frais d'inscription
+        if (Boolean.FALSE.equals(request.getRegistrationFeePaid())) {
+            throw new BadRequestException(
+                    "Registration fee of " + REGISTRATION_FEE + " MGA has not been paid.");
+        }
+
+        // 5. Cotisation annuelle ou cotisation périodique
+        if (collectivity != null && collectivity.getAnnualContributionAmount() != null) {
+            Long expected = collectivity.getAnnualContributionAmount();
+            if (request.getAnnualContributionPaid() == null
+                    || request.getAnnualContributionPaid() < expected) {
+                throw new BadRequestException(
+                        "Annual contribution of " + expected + " MGA must be paid in full. "
+                                + "Paid: " + (request.getAnnualContributionPaid() != null
+                                ? request.getAnnualContributionPaid() : 0));
+            }
+        } else if (Boolean.FALSE.equals(request.getMembershipDuesPaid())) {
             throw new BadRequestException("Membership dues have not been paid.");
         }
 
-        // 4. Build and persist the entity
+        // 6. Persistance
         MemberEntity entity = toEntity(request);
+        entity.setRefereeRelations(extractRefereeRelations(request.getReferees()));
         memberRepository.save(entity);
 
         return toDto(entity, refereeEntities);
     }
 
-    /**
-     * Resolves each referee ID: throws 404 if unknown, 400 if not a confirmed member
-     * or does not yet have the required seniority.
-     */
-    private List<MemberEntity> resolveReferees(List<String> refereeIds) {
-        List<MemberEntity> referees = new ArrayList<>();
-        if (refereeIds == null || refereeIds.isEmpty()) {
-            return referees;
-        }
-        for (String refereeId : refereeIds) {
-            MemberEntity referee = memberRepository.findById(refereeId)
-                    .orElseThrow(() -> new NotFoundException("Referee not found: " + refereeId));
+    // ── Validation parrains ───────────────────────────────────────────────────
 
+    /**
+     * Vérifie chaque parrain (occupation ≠ JUNIOR, ancienneté ≥ 90 j, type de relation fourni)
+     * et applique la règle de collectivité : le nombre de parrains de la collectivité cible
+     * doit être ≥ au nombre de parrains extérieurs.
+     */
+    private List<MemberEntity> validateRefereesWithCollectivityRule(
+            List<MemberRelationDto> refereeRelations, CollectivityEntity targetCollectivity) {
+
+        List<MemberEntity> referees = new ArrayList<>();
+        int fromTarget = 0;
+        int fromOthers = 0;
+
+        for (MemberRelationDto relation : refereeRelations) {
+            MemberEntity referee = memberRepository.findById(relation.getRefereeId())
+                    .orElseThrow(() -> new NotFoundException(
+                            "Referee not found: " + relation.getRefereeId()));
+
+            // Occupation : le JUNIOR ne peut pas parrainer
             if (referee.getOccupation() == MemberOccupation.JUNIOR) {
                 throw new BadRequestException(
-                        "Referee " + refereeId + " is a junior member and cannot sponsor new members.");
+                        "Referee " + relation.getRefereeId()
+                                + " is a junior member and cannot sponsor new members.");
             }
 
-            long seniority = java.time.temporal.ChronoUnit.DAYS.between(
-                    referee.getMembershipDate(), LocalDate.now());
+            // Ancienneté minimale de 90 jours
+            long seniority = ChronoUnit.DAYS.between(referee.getMembershipDate(), LocalDate.now());
             if (seniority < REFEREE_MIN_SENIORITY_DAYS) {
                 throw new BadRequestException(
-                        "Referee " + refereeId + " does not yet have the required 90 days of seniority "
+                        "Referee " + relation.getRefereeId()
+                                + " does not yet have the required 90 days of seniority "
                                 + "(current: " + seniority + " days).");
+            }
+
+            // Type de relation obligatoire
+            if (relation.getRelationType() == null || relation.getRelationType().isBlank()) {
+                throw new BadRequestException(
+                        "Relation type with referee " + relation.getRefereeId() + " is required.");
+            }
+
+            // Comptage par collectivité
+            if (targetCollectivity != null
+                    && targetCollectivity.getId().equals(referee.getCollectivityId())) {
+                fromTarget++;
+            } else {
+                fromOthers++;
             }
 
             referees.add(referee);
         }
+
+        // Règle : parrains internes ≥ parrains externes
+        if (targetCollectivity != null && fromTarget < fromOthers) {
+            throw new BadRequestException(
+                    "Admission rule violation: at least as many referees from the target collectivity ("
+                            + fromTarget + ") as from other collectivities (" + fromOthers + ") are required.");
+        }
+
         return referees;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Mapping helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    private Map<String, String> extractRefereeRelations(List<MemberRelationDto> relations) {
+        Map<String, String> map = new HashMap<>();
+        for (MemberRelationDto relation : relations) {
+            map.put(relation.getRefereeId(), relation.getRelationType());
+        }
+        return map;
+    }
+
+    // ── Mappage DTO → entité ──────────────────────────────────────────────────
 
     private MemberEntity toEntity(CreateMemberDto dto) {
         MemberEntity entity = new MemberEntity();
@@ -124,14 +174,24 @@ public class MemberService {
         entity.setEmail(dto.getEmail());
         entity.setOccupation(dto.getOccupation());
         entity.setCollectivityId(dto.getCollectivityIdentifier());
-        entity.setRefereeIds(dto.getReferees() != null ? dto.getReferees() : new ArrayList<>());
-        entity.setMembershipDate(LocalDate.now());
+        entity.setMembershipDate(LocalDate.now()); // joinDate — positionné automatiquement (v0.0.3)
+        entity.setAnnualContributionAmount(dto.getAnnualContributionPaid());
+
+        List<String> refereeIds = new ArrayList<>();
+        if (dto.getReferees() != null) {
+            for (MemberRelationDto relation : dto.getReferees()) {
+                refereeIds.add(relation.getRefereeId());
+            }
+        }
+        entity.setRefereeIds(refereeIds);
+
         return entity;
     }
 
+    // ── Mappage entité → DTO ──────────────────────────────────────────────────
+
     /**
-     * Converts a MemberEntity to its DTO representation.
-     * Referees are expanded one level deep (their own referees are left empty to avoid cycles).
+     * Méthode publique utilisée par CollectivityService.
      */
     public MemberDto toDto(MemberEntity entity) {
         List<MemberEntity> refereeEntities = new ArrayList<>();
@@ -153,10 +213,10 @@ public class MemberService {
         dto.setPhoneNumber(entity.getPhoneNumber());
         dto.setEmail(entity.getEmail());
         dto.setOccupation(entity.getOccupation());
+        dto.setJoinDate(entity.getMembershipDate()); // v0.0.3 — joinDate exposé
 
         List<MemberDto> refereeDtos = new ArrayList<>();
         for (MemberEntity referee : refereeEntities) {
-            // Shallow mapping — referees of referees are not expanded (prevents cycles)
             MemberDto refereeDto = new MemberDto();
             refereeDto.setId(referee.getId());
             refereeDto.setFirstName(referee.getFirstName());
@@ -168,6 +228,7 @@ public class MemberService {
             refereeDto.setPhoneNumber(referee.getPhoneNumber());
             refereeDto.setEmail(referee.getEmail());
             refereeDto.setOccupation(referee.getOccupation());
+            refereeDto.setJoinDate(referee.getMembershipDate()); // v0.0.3
             refereeDtos.add(refereeDto);
         }
         dto.setReferees(refereeDtos);
