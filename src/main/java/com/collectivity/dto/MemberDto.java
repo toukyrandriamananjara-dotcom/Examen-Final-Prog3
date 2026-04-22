@@ -6,17 +6,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DTO de réponse pour le schéma Member.
- * - joinDate exposé depuis v0.0.3 (positionné automatiquement à la création).
- * - Les referees sont développés en MemberDto complets (un niveau de profondeur).
- */
+
 public class MemberDto extends MemberInformationDto {
 
     private String id;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate joinDate;  // v0.0.3
+    private LocalDate joinDate;
 
     private List<MemberDto> referees = new ArrayList<>();
 

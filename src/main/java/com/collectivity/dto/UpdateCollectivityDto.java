@@ -1,9 +1,6 @@
 package com.collectivity.dto;
 
-/**
- * Request DTO pour PATCH /collectivities/{id} — assignation du numéro et du nom.
- * number est un Integer conformément au schéma AssignCollectivityIdentity (v0.0.2+).
- */
+
 public class UpdateCollectivityDto {
 
     private Integer number;

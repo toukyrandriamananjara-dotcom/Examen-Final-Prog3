@@ -91,11 +91,6 @@ public class MemberService {
 
     // ── Validation parrains ───────────────────────────────────────────────────
 
-    /**
-     * Vérifie chaque parrain (occupation ≠ JUNIOR, ancienneté ≥ 90 j, type de relation fourni)
-     * et applique la règle de collectivité : le nombre de parrains de la collectivité cible
-     * doit être ≥ au nombre de parrains extérieurs.
-     */
     private List<MemberEntity> validateRefereesWithCollectivityRule(
             List<MemberRelationDto> refereeRelations, CollectivityEntity targetCollectivity) {
 
@@ -159,7 +154,6 @@ public class MemberService {
         return map;
     }
 
-    // ── Mappage DTO → entité ──────────────────────────────────────────────────
 
     private MemberEntity toEntity(CreateMemberDto dto) {
         MemberEntity entity = new MemberEntity();
@@ -188,11 +182,7 @@ public class MemberService {
         return entity;
     }
 
-    // ── Mappage entité → DTO ──────────────────────────────────────────────────
 
-    /**
-     * Méthode publique utilisée par CollectivityService.
-     */
     public MemberDto toDto(MemberEntity entity) {
         List<MemberEntity> refereeEntities = new ArrayList<>();
         for (String refereeId : entity.getRefereeIds()) {

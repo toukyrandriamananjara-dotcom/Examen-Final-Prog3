@@ -1,13 +1,10 @@
 package com.collectivity.dto;
 
-/**
- * Response DTO pour le schéma CollectivityStructure.
- * Chaque position expose un MemberDto complet.
- */
+
 public class CollectivityStructureDto {
 
     private MemberDto president;
-    private MemberDto deputyPresident;  // renommé depuis vicePresident (v0.0.3)
+    private MemberDto deputyPresident;
     private MemberDto treasurer;
     private MemberDto secretary;
 

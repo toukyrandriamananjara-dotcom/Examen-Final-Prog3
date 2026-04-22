@@ -1,13 +1,10 @@
 package com.collectivity.dto;
 
-/**
- * Request DTO pour le schéma CreateCollectivityStructure.
- * Chaque champ est un MemberIdentifier (String).
- */
+
 public class CreateCollectivityStructureDto {
 
     private String president;
-    private String deputyPresident;  // renommé depuis vicePresident (v0.0.3)
+    private String deputyPresident;
     private String treasurer;
     private String secretary;
 

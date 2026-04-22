@@ -19,9 +19,9 @@ public class MemberEntity {
     private MemberOccupation occupation;
     private String collectivityId;
     private List<String> refereeIds = new ArrayList<>();
-    private Map<String, String> refereeRelations; // NEW: refereeId -> relationType
+    private Map<String, String> refereeRelations;
     private LocalDate membershipDate;
-    private Long annualContributionAmount; // NEW: amount due for annual contribution
+    private Long annualContributionAmount;
 
     public MemberEntity() {}
 
