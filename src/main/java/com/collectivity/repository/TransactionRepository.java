@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 
 @Repository
 public class TransactionRepository {
@@ -23,5 +24,10 @@ public class TransactionRepository {
     public Collection<CollectivityTransactionEntity> findByCollectivityIdAndDateRange(
             String collectivityId, LocalDate from, LocalDate to) {
         return dataSource.findTransactionsByCollectivityIdAndDateRange(collectivityId, from, to);
+    }
+
+    public List<CollectivityTransactionEntity> findByAccountCreditedIdAndDateUpTo(
+            String accountCreditedId, LocalDate upToDate) {
+        return (List<CollectivityTransactionEntity>) dataSource.findTransactionsByAccountCreditedIdAndDateUpTo(accountCreditedId, upToDate);
     }
 }

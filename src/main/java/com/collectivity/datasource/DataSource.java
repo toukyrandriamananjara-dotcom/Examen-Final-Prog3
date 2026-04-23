@@ -3,6 +3,7 @@ package com.collectivity.datasource;
 import com.collectivity.entity.*;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +66,14 @@ public class DataSource {
         return transactions.values().stream()
                 .filter(tx -> tx.getCollectivityId().equals(collectivityId))
                 .filter(tx -> !tx.getCreationDate().isBefore(from) && !tx.getCreationDate().isAfter(to))
+                .toList();
+    }
+
+    public Collection<CollectivityTransactionEntity> findTransactionsByAccountCreditedIdAndDateUpTo(
+            String accountCreditedId, LocalDate upToDate) {
+        return transactions.values().stream()
+                .filter(tx -> tx.getAccountCreditedId().equals(accountCreditedId))
+                .filter(tx -> !tx.getCreationDate().isAfter(upToDate))
                 .toList();
     }
 }
