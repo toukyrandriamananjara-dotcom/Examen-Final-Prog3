@@ -1,5 +1,7 @@
 package com.collectivity.entity;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
