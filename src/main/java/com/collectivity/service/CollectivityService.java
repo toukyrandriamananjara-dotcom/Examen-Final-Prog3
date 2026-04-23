@@ -240,4 +240,10 @@ public class CollectivityService {
         dto.setCreationDate(entity.getCreationDate());
         return dto;
     }
+
+    public CollectivityDto getCollectivityById(String id) {
+        CollectivityEntity entity = collectivityRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Collectivity not found with id: " + id));
+        return toDto(entity);
+    }
 }

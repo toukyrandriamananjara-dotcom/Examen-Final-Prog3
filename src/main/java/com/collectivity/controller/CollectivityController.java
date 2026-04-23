@@ -2,6 +2,7 @@ package com.collectivity.controller;
 
 import com.collectivity.dto.*;
 import com.collectivity.service.CollectivityService;
+import com.collectivity.service.FinancialAccountService;
 import com.collectivity.service.MembershipFeeService;
 import com.collectivity.service.TransactionService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -19,13 +20,17 @@ public class CollectivityController {
     private final CollectivityService collectivityService;
     private final MembershipFeeService membershipFeeService;
     private final TransactionService transactionService;
+    private final FinancialAccountService financialAccountService;
+
 
     public CollectivityController(CollectivityService collectivityService,
                                   MembershipFeeService membershipFeeService,
-                                  TransactionService transactionService) {
+                                  TransactionService transactionService,
+                                  FinancialAccountService financialAccountService) {
         this.collectivityService = collectivityService;
         this.membershipFeeService = membershipFeeService;
         this.transactionService = transactionService;
+        this.financialAccountService = financialAccountService;
     }
 
     @PostMapping
@@ -65,4 +70,20 @@ public class CollectivityController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate to) {
         return ResponseEntity.ok(transactionService.getTransactionsByCollectivityAndDateRange(id, from, to));
     }
+
+    // GET /collectivities/{id}
+    @GetMapping("/{id}")
+    public ResponseEntity<CollectivityDto> getCollectivityById(@PathVariable String id) {
+        return ResponseEntity.ok(collectivityService.getCollectivityById(id));
+    }
+
+    // NEW: GET /collectivities/{id}/financialAccounts
+    @GetMapping("/{id}/financialAccounts")
+    public ResponseEntity<List<FinancialAccountWithBalanceDto>> getFinancialAccounts(
+            @PathVariable String id,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate at) {
+        return ResponseEntity.ok(financialAccountService.getFinancialAccountsWithBalance(id, at));
+    }
+
+
 }
