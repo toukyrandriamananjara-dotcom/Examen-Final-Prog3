@@ -7,7 +7,7 @@ import java.util.List;
 public class CreateMemberDto extends MemberInformationDto {
 
     private String collectivityIdentifier;
-    private List<MemberRelationDto> referees = new ArrayList<>();
+    private List<String> referees = new ArrayList<>();
     private Boolean registrationFeePaid;
     private Boolean membershipDuesPaid;
     private Long annualContributionPaid;
@@ -17,8 +17,13 @@ public class CreateMemberDto extends MemberInformationDto {
     public String getCollectivityIdentifier() { return collectivityIdentifier; }
     public void setCollectivityIdentifier(String collectivityIdentifier) { this.collectivityIdentifier = collectivityIdentifier; }
 
-    public List<MemberRelationDto> getReferees() { return referees; }
-    public void setReferees(List<MemberRelationDto> referees) { this.referees = referees; }
+    public List<String> getReferees() {
+        return referees;
+    }
+
+    public void setReferees(List<String> referees) {
+        this.referees = referees;
+    }
 
     public Boolean getRegistrationFeePaid() { return registrationFeePaid; }
     public void setRegistrationFeePaid(Boolean registrationFeePaid) { this.registrationFeePaid = registrationFeePaid; }

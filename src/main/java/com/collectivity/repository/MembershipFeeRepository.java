@@ -19,7 +19,7 @@ public class MembershipFeeRepository {
 
     public MembershipFeeEntity save(MembershipFeeEntity fee) {
         String sql = "INSERT INTO membership_fees (id, collectivity_id, eligible_from, frequency, amount, label, status) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                "VALUES (?, ?, ?, ?, ?, ?, CAST(? AS status_type)) " +
                 "ON CONFLICT (id) DO UPDATE SET collectivity_id = EXCLUDED.collectivity_id, eligible_from = EXCLUDED.eligible_from, frequency = EXCLUDED.frequency, amount = EXCLUDED.amount, label = EXCLUDED.label, status = EXCLUDED.status";
         try (Connection conn = jdbcDataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

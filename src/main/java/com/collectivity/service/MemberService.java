@@ -1,7 +1,6 @@
 package com.collectivity.service;
 
 import com.collectivity.dto.CreateMemberDto;
-import com.collectivity.dto.MemberRelationDto;
 import com.collectivity.dto.MemberDto;
 import com.collectivity.entity.CollectivityEntity;
 import com.collectivity.entity.MemberEntity;
@@ -92,21 +91,20 @@ public class MemberService {
     // ── Validation parrains ───────────────────────────────────────────────────
 
     private List<MemberEntity> validateRefereesWithCollectivityRule(
-            List<MemberRelationDto> refereeRelations, CollectivityEntity targetCollectivity) {
+            List<String> refereeIds, CollectivityEntity targetCollectivity) {
 
         List<MemberEntity> referees = new ArrayList<>();
         int fromTarget = 0;
         int fromOthers = 0;
 
-        for (MemberRelationDto relation : refereeRelations) {
-            MemberEntity referee = memberRepository.findById(relation.getRefereeId())
-                    .orElseThrow(() -> new NotFoundException(
-                            "Referee not found: " + relation.getRefereeId()));
+        for (String refereeId : refereeIds) {
+            MemberEntity referee = memberRepository.findById(refereeId)
+                    .orElseThrow(() -> new NotFoundException("Referee not found: " + refereeId));
 
             // Occupation : le JUNIOR ne peut pas parrainer
             if (referee.getOccupation() == MemberOccupation.JUNIOR) {
                 throw new BadRequestException(
-                        "Referee " + relation.getRefereeId()
+                        "Referee " + refereeId
                                 + " is a junior member and cannot sponsor new members.");
             }
 
@@ -114,15 +112,9 @@ public class MemberService {
             long seniority = ChronoUnit.DAYS.between(referee.getMembershipDate(), LocalDate.now());
             if (seniority < REFEREE_MIN_SENIORITY_DAYS) {
                 throw new BadRequestException(
-                        "Referee " + relation.getRefereeId()
+                        "Referee " + refereeId
                                 + " does not yet have the required 90 days of seniority "
                                 + "(current: " + seniority + " days).");
-            }
-
-            // Type de relation obligatoire
-            if (relation.getRelationType() == null || relation.getRelationType().isBlank()) {
-                throw new BadRequestException(
-                        "Relation type with referee " + relation.getRefereeId() + " is required.");
             }
 
             // Comptage par collectivité
@@ -146,14 +138,13 @@ public class MemberService {
         return referees;
     }
 
-    private Map<String, String> extractRefereeRelations(List<MemberRelationDto> relations) {
+    private Map<String, String> extractRefereeRelations(List<String> refereeIds) {
         Map<String, String> map = new HashMap<>();
-        for (MemberRelationDto relation : relations) {
-            map.put(relation.getRefereeId(), relation.getRelationType());
+        for (String id : refereeIds) {
+            map.put(id, "UNKNOWN");
         }
         return map;
     }
-
 
     private MemberEntity toEntity(CreateMemberDto dto) {
         MemberEntity entity = new MemberEntity();
@@ -168,20 +159,18 @@ public class MemberService {
         entity.setEmail(dto.getEmail());
         entity.setOccupation(dto.getOccupation());
         entity.setCollectivityId(dto.getCollectivityIdentifier());
-        entity.setMembershipDate(LocalDate.now()); // joinDate — positionné automatiquement (v0.0.3)
+        entity.setMembershipDate(LocalDate.now());
         entity.setAnnualContributionAmount(dto.getAnnualContributionPaid());
 
-        List<String> refereeIds = new ArrayList<>();
+        // dto.getReferees() est maintenant List<String>
         if (dto.getReferees() != null) {
-            for (MemberRelationDto relation : dto.getReferees()) {
-                refereeIds.add(relation.getRefereeId());
-            }
+            entity.setRefereeIds(new ArrayList<>(dto.getReferees()));
+        } else {
+            entity.setRefereeIds(new ArrayList<>());
         }
-        entity.setRefereeIds(refereeIds);
 
         return entity;
     }
-
 
     public MemberDto toDto(MemberEntity entity) {
         List<MemberEntity> refereeEntities = new ArrayList<>();
@@ -203,7 +192,7 @@ public class MemberService {
         dto.setPhoneNumber(entity.getPhoneNumber());
         dto.setEmail(entity.getEmail());
         dto.setOccupation(entity.getOccupation());
-        dto.setJoinDate(entity.getMembershipDate()); // v0.0.3 — joinDate exposé
+        dto.setJoinDate(entity.getMembershipDate());
 
         List<MemberDto> refereeDtos = new ArrayList<>();
         for (MemberEntity referee : refereeEntities) {
@@ -218,7 +207,7 @@ public class MemberService {
             refereeDto.setPhoneNumber(referee.getPhoneNumber());
             refereeDto.setEmail(referee.getEmail());
             refereeDto.setOccupation(referee.getOccupation());
-            refereeDto.setJoinDate(referee.getMembershipDate()); // v0.0.3
+            refereeDto.setJoinDate(referee.getMembershipDate());
             refereeDtos.add(refereeDto);
         }
         dto.setReferees(refereeDtos);
