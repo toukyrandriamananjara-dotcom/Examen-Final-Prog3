@@ -33,7 +33,7 @@ public class MemberRepository {
             stmt.setString(6, member.getAddress());
             stmt.setString(7, member.getProfession());
             if (member.getPhoneNumber() != null) {
-                stmt.setLong(8, member.getPhoneNumber());
+                stmt.setString(8, member.getPhoneNumber());
             } else {
                 stmt.setNull(8, Types.BIGINT);
             }
@@ -157,7 +157,7 @@ public class MemberRepository {
         m.setGender(Gender.valueOf(rs.getString("gender")));
         m.setAddress(rs.getString("address"));
         m.setProfession(rs.getString("profession"));
-        m.setPhoneNumber(rs.getObject("phone_number") != null ? rs.getLong("phone_number") : null);
+        m.setPhoneNumber(rs.getString("phone_number") != null ? rs.getString("phone_number") : null);
         m.setEmail(rs.getString("email"));
         m.setOccupation(MemberOccupation.valueOf(rs.getString("occupation")));
         m.setCollectivityId(rs.getString("collectivity_id"));

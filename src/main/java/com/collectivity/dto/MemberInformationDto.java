@@ -17,7 +17,16 @@ public class MemberInformationDto {
     private Gender gender;
     private String address;
     private String profession;
-    private Long phoneNumber;
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    private String phoneNumber;
     private String email;
     private MemberOccupation occupation;
 
@@ -41,8 +50,7 @@ public class MemberInformationDto {
     public String getProfession() { return profession; }
     public void setProfession(String profession) { this.profession = profession; }
 
-    public Long getPhoneNumber() { return phoneNumber; }
-    public void setPhoneNumber(Long phoneNumber) { this.phoneNumber = phoneNumber; }
+
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
