@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.*;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.*;
 
 @Repository
@@ -164,5 +165,38 @@ public class MemberRepository {
         m.setMembershipDate(rs.getDate("membership_date").toLocalDate());
         m.setAnnualContributionAmount(rs.getObject("annual_contribution_amount") != null ? rs.getLong("annual_contribution_amount") : null);
         return m;
+    }
+
+    public List<MemberEntity> findByCollectivityId(String collectivityId) {
+        String sql = "SELECT * FROM members WHERE collectivity_id = ?";
+        List<MemberEntity> list = new ArrayList<>();
+        try (Connection conn = jdbcDataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                list.add(mapResultSet(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding members by collectivity", e);
+        }
+    }
+
+    public int countByCollectivityIdAndMembershipDateBetween(String collectivityId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COUNT(*) FROM members WHERE collectivity_id = ? AND membership_date BETWEEN ? AND ?";
+        try (Connection conn = jdbcDataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            stmt.setDate(2, Date.valueOf(from));
+            stmt.setDate(3, Date.valueOf(to));
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error counting new members", e);
+        }
     }
 }

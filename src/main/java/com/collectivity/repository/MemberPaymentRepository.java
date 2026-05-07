@@ -5,6 +5,9 @@ import com.collectivity.entity.MemberPaymentEntity;
 import org.springframework.stereotype.Repository;
 
 import java.sql.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,5 +68,25 @@ public class MemberPaymentRepository {
         p.setAccountCreditedId(rs.getString("account_credited_id"));
         p.setCreationDate(rs.getDate("creation_date").toLocalDate());
         return p;
+    }
+
+    public List<MemberPaymentEntity> findByCollectivityAndDateRange(String collectivityId, LocalDate from, LocalDate to) {
+        String sql = "SELECT mp.* FROM member_payments mp " +
+                "JOIN membership_fees mf ON mp.membership_fee_id = mf.id " +
+                "WHERE mf.collectivity_id = ? AND mp.creation_date BETWEEN ? AND ?";
+        List<MemberPaymentEntity> list = new ArrayList<>();
+        try (Connection conn = jdbcDataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            stmt.setDate(2, Date.valueOf(from));
+            stmt.setDate(3, Date.valueOf(to));
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                list.add(mapResultSet(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding payments by collectivity and date range", e);
+        }
     }
 }
