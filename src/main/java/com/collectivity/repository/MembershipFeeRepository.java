@@ -79,4 +79,21 @@ public class MembershipFeeRepository {
         f.setStatus(rs.getString("status"));
         return f;
     }
+
+    public List<MembershipFeeEntity> findByCollectivityIdAndStatus(String collectivityId, String status) {
+        String sql = "SELECT * FROM membership_fees WHERE collectivity_id = ? AND status = CAST(? AS status_type)";
+        List<MembershipFeeEntity> list = new ArrayList<>();
+        try (Connection conn = jdbcDataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            stmt.setString(2, status);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                list.add(mapResultSet(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding fees by collectivity and status", e);
+        }
+    }
 }
